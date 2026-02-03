@@ -18,58 +18,6 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const upload = multer();
 
 
-app.post('/api/chat', async (req, res) => {
-    const { conversation, config } = req.body;
-    const { temperature = 0.9, systemInstruction = `
-Kamu adalah AI chef ramah dan berpengalaman.
-Kamu membantu pengguna memasak dengan cara yang praktis, sederhana, dan menyenangkan.
-
-Gaya menjawab:
-- Bahasa Indonesia santai dan sopan
-- Fokus ke solusi praktis
-- Beri tips kecil agar masakan lebih enak
-- Jika bahan tidak lengkap, beri alternatif
-
-Batasan:
-- Hanya menjawab seputar masak, resep, dan dapur
-- Tidak menjawab topik di luar kuliner
-    ` } = config || {};
-
-    try {
-        if (!Array.isArray(conversation)) {
-            throw new Error('Messages must be an array!');
-        }
-
-        // Format history for the chat session
-        const history = conversation.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.text || msg.content }]
-        }));
-
-        const lastMessage = history.pop();
-        if (!lastMessage || lastMessage.role !== 'user') {
-            return res.status(400).json({ error: "Last message must be from user" });
-        }
-
-        const chat = aiModel.startChat({
-            history: history,
-            generationConfig: {
-                temperature: Number(temperature),
-            },
-            systemInstruction: systemInstruction.trim()
-        });
-
-        const result = await chat.sendMessage(lastMessage.parts[0].text);
-        const response = await result.response;
-        const text = response.text();
-
-        res.status(200).json({ result: text });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
 app.post("/analyze-baby-cry", upload.single("audio"), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: "No audio file uploaded." });
@@ -83,7 +31,10 @@ app.post("/analyze-baby-cry", upload.single("audio"), async (req, res) => {
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `
+        const region = req.body.region || 'US';
+
+        // Base prompt (English)
+        let prompt = `
         Analyze this audio and determine if it contains a baby crying.
         
         Return a JSON object with the following structure:
@@ -98,6 +49,26 @@ app.post("/analyze-baby-cry", upload.single("audio"), async (req, res) => {
         If it is NOT a baby crying, set "is_baby_cry" to false and provide a description in "message".
         If it IS a baby crying, analyze the likely cause based on the sound characteristics (pitch, rhythm, intensity), provide a confidence score, and suggest practical actions.
         `;
+
+        // Localize prompt based on region
+        if (region === 'ID') {
+            prompt = `
+            Analisis audio ini dan tentukan apakah berisi suara bayi menangis.
+            
+            Kembalikan objek JSON dengan struktur berikut:
+            {
+                "is_baby_cry": boolean,
+                "cause": string (misal: "Lapar", "Lelah", "Tidak Nyaman", "Sakit", "Overstimulasi", atau "Tidak Diketahui"),
+                "confidence": number (0-100),
+                "actions": string[] (daftar rekomendasi tindakan),
+                "message": string (opsional, konteks atau penjelasan)
+            }
+
+            Jika INI BUKAN tangisan bayi, set "is_baby_cry" ke false dan berikan deskripsi di "message".
+            Jika INI ADALAH tangisan bayi, analisis kemungkinan penyebab berdasarkan karakteristik suara (nada, ritme, intensitas), berikan skor kepercayaan (confidence), dan sarankan tindakan praktis.
+            Gunakan Bahasa Indonesia untuk semua nilai string dalam respon JSON.
+            `;
+        }
 
         const audioPart = {
             inlineData: {
