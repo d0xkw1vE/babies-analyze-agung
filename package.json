@@ -16,5 +16,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "form-data": "^4.0.5",
+    "node-fetch": "^3.3.2"
   }
 }

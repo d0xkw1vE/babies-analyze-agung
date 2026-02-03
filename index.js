@@ -9,7 +9,7 @@ const app = express();
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // **Set your default Gemini model here:**
-// Menggunakan gemini-1.5-flash karena lebih stabil dan tersedia umum
+// Menggunakan gemini-2.5-flash karena lebih stabil dan tersedia umum
 const GEMINI_MODEL = "gemini-2.5-flash";
 const aiModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
