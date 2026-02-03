@@ -13,7 +13,8 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const GEMINI_MODEL = "gemini-2.5-flash";
 const aiModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const upload = multer();
 
 
@@ -128,6 +129,13 @@ app.post("/analyze-baby-cry", upload.single("audio"), async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server ready on http://localhost:${PORT}`);
-});
+
+// Only listen when running locally (not in Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Server ready on http://localhost:${PORT}`);
+    });
+}
+
+// Export the Express API
+export default app;
